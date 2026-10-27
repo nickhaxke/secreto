@@ -80,10 +80,12 @@ TLS connection/pooler, rather than a service-role REST key.
 ## Existing Supabase and production deployment
 
 Target project: `idcammoqdzqwyuacywug`. Target Netlify site: `secreto-drnick`.
-**The existing live schema has not been inspected or modified. Integration with
-legacy tables/functions is pending access and compatibility review.** The new
-migration uses `secreto_v2` and does not overwrite unknown existing data. It must
-not be applied blindly. No automatic migration runs during builds or requests.
+**The existing live schema was inspected and the V2 migration was applied on
+2026-10-27.** See [the migration record](supabase/MIGRATION_STATUS.md). The private
+`secreto_v2` schema is separate from the preserved legacy tables and draw function.
+Do not rerun the initial migration on this project. Runtime connection and login
+configuration still require verification. No automatic migration runs during
+builds or requests.
 
 1. Rotate previously exposed Supabase credentials, database passwords, and any
    dependent credentials. Revoke old keys and update existing consumers.
