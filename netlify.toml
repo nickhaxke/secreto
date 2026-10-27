@@ -14,11 +14,8 @@
   to = "/index.html"
   status = 200
 
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
-  status = 200
-  force = true
+# /api/* is registered by the v2 function's config.path in api.js.
+# Do not rewrite it to the function's default URL: custom paths own routing.
 
 [[headers]]
   for = "/*"

@@ -115,9 +115,15 @@ not be applied blindly. No automatic migration runs during builds or requests.
 6. Link the existing Netlify site to this repository, using the committed
    `netlify.toml`. Deploy using the existing project's dashboard or an authorized
    Netlify CLI session. Do not create a duplicate site or database project.
+   Deploy from the repository root so Netlify builds `netlify/functions/api.js`.
+   Uploading only `public/` produces a static site without the backend. The
+   function's `config.path` owns `/api/*`; do not add another rewrite for it.
 7. Verify organizer login, event writes, atomic draw, private invitation/PIN,
    reveal, repeated reveal, progress, and unauthorized access on the live site.
    Use clearly labeled test events and never inspect real users' matches.
+   First run `npm run verify:deployment -- https://secreto-drnick.netlify.app`.
+   This checks both the homepage and anonymous API response and fails on an HTML
+   404 or server configuration error. It does not replace authenticated testing.
 
 Deployment access requires a Netlify account/token authorized for the existing
 site. Schema inspection requires Supabase project access or an authorized
