@@ -33,6 +33,21 @@ export function createApp({ db, env, development = false }) {
     `${cookieName}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${age}${development ? "" : "; Secure"}`;
   const rows = async (sql, values = [], client = db) =>
     (await client.query(sql, values)).rows;
+  let adminHashPromise;
+  const adminHash = () => {
+    if (!adminHashPromise) {
+      adminHashPromise = /^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/.test(
+        env.SECRETO_ADMIN_PASSWORD_HASH || "",
+      )
+        ? Promise.resolve(env.SECRETO_ADMIN_PASSWORD_HASH)
+        : typeof env.SECRETO_ADMIN_PASSWORD === "string" &&
+            env.SECRETO_ADMIN_PASSWORD.length >= 14 &&
+            env.SECRETO_ADMIN_PASSWORD.length <= 256
+          ? passwordHash(env.SECRETO_ADMIN_PASSWORD)
+          : Promise.resolve(null);
+    }
+    return adminHashPromise;
+  };
   async function limit(key, max, seconds = 900) {
     const [{ count }] = await rows(
       `INSERT INTO secreto_v2.attempts(key,count,reset_at) VALUES($1,1,now()+$2*interval '1 second')
@@ -120,9 +135,7 @@ export function createApp({ db, env, development = false }) {
         !origin ||
         !env.SECRETO_SESSION_SECRET ||
         env.SECRETO_SESSION_SECRET.length < 32 ||
-        !/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/.test(
-          env.SECRETO_ADMIN_PASSWORD_HASH || "",
-        ) ||
+        !(await adminHash()) ||
         (!development &&
           (env.SECRETO_CREDENTIALS_ROTATED !== "true" ||
             !origin.startsWith("https://")))
@@ -180,10 +193,7 @@ export function createApp({ db, env, development = false }) {
         if (
           typeof body.password !== "string" ||
           body.password.length > 256 ||
-          !(await passwordMatches(
-            body.password,
-            env.SECRETO_ADMIN_PASSWORD_HASH,
-          ))
+          !(await passwordMatches(body.password, await adminHash()))
         )
           fail(401, "The password is incorrect.");
         const token = await transaction(db, (client) =>
@@ -231,7 +241,7 @@ export function createApp({ db, env, development = false }) {
             // Unknown tokens still perform the expensive hash comparison.
             const valid = await passwordMatches(
               body.pin,
-              p?.pin_hash || env.SECRETO_ADMIN_PASSWORD_HASH,
+              p?.pin_hash || (await adminHash()),
             );
             if (!p || !valid) fail(401, "Invitation or PIN is incorrect.");
             await client.query(

@@ -392,6 +392,33 @@ test("server fails closed until credential rotation is confirmed", async () => {
     503,
   );
 });
+
+test("organizer password stored as a Functions secret is hashed on the server", async () => {
+  const secretEnv = {
+    ...env,
+    SECRETO_ADMIN_PASSWORD: "owner-password-kept-in-server-env",
+  };
+  delete secretEnv.SECRETO_ADMIN_PASSWORD_HASH;
+  const handler = createApp({ db, env: secretEnv });
+  const good = await handler(
+    new Request(origin + "/api/login", {
+      method: "POST",
+      headers: { Origin: origin, "Content-Type": "application/json" },
+      body: JSON.stringify({ password: secretEnv.SECRETO_ADMIN_PASSWORD }),
+    }),
+  );
+  assert.equal(good.status, 200);
+  assert.match(good.headers.get("set-cookie"), /HttpOnly/);
+  const bad = await handler(
+    new Request(origin + "/api/login", {
+      method: "POST",
+      headers: { Origin: origin, "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "incorrect-password" }),
+    }),
+  );
+  assert.equal(bad.status, 401);
+  assert.doesNotMatch(await good.text(), /owner-password-kept-in-server-env/);
+});
 test("database rejects self assignment and cross-event pairing", async () => {
   const a = await create(),
     b = await create();
